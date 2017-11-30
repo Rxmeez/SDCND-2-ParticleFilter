@@ -27,7 +27,7 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
 	// NOTE: Consult particle_filter.h for more information about this method (and others in this file).
 
     // Set a number of particles to be initialized
-    num_particles = 1000;
+    num_particles = 200;
 
     // Resize particle and weights vector to be the same as num_particles
     particles.resize(num_particles);  // particles
@@ -108,6 +108,27 @@ void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::ve
 	//   observed measurement to this particular landmark.
 	// NOTE: this method will NOT be called by the grading code. But you will probably find it useful to
 	//   implement this method and use it as a helper during the updateWeights phase.
+
+  for (int i=0; i < observations.size(); i++){
+
+    int current_id;
+    double smallest_error = 1.0e99;  // Large Number so future errors will be smaller
+
+    for (int j=0; j < predicted.size(); j++){
+      // difference between predicted and each observations
+      double dx = predicted[j].x - observations[i].x;
+      double dy = predicted[j].y - observations[i].y;
+      double error = (dx * dx) + (dy * dy);
+
+      if (error < smallest_error){
+        // nearby id
+        current_id = j;
+        smallest_error = error;
+      }
+    }
+
+    observations[i].id = current_id;
+  }
 
 }
 
