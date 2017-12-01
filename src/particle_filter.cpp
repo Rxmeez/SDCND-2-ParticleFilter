@@ -112,7 +112,7 @@ void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::ve
   for (int i=0; i < observations.size(); i++){
 
     int current_id;
-    double smallest_error = 1.0e99;  // Large Number so future errors will be smaller
+    double smallest_error = 9999999.0;  // Large Number so future errors will be smaller
 
     for (int j=0; j < predicted.size(); j++){
       // difference between predicted and each observations
@@ -144,6 +144,73 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 	//   and the following is a good resource for the actual equation to implement (look at equation
 	//   3.33
 	//   http://planning.cs.uiuc.edu/node99.html
+
+  // P(x,y) = 1/(2*(pi)*std[x]*std[y]) e^ -((x-ux)^2/(2*std[x]^2) + (y-uy)^2/(2*std[y]^2))
+  // where ux and uy are coordinates of the nearest landmarks
+
+  const double stdx = std_landmark[0];
+  const double stdy = std_landmark[1];
+  const double gauss_norm = 1.0 / (2 * M_PI * stdx *stdy);
+  const double n_x = 1.0 / (2 * stdx * stdx);
+  const double n_y = 1.0 / (2 * stdy * stdy);
+
+
+  // Transform each observations to map coordinates for each particle
+  for (int i=0; i < num_particles; i++) {
+
+    vector<LandmarkObs> predictions;
+    vector<LandmarkObs> transformed_obs;
+
+    for (int j=0; j < observations.size(); j++) {
+
+    const double trans_x = particles[i].x + observations[j].x * cos(particles[i].theta) - observations[j].y * sin(particles[i].theta);
+    const double trans_y = particles[i].y + observations[j].y * cos(particles[i].theta) + observations[j].x * sin(particles[i].theta);
+
+    LandmarkObs observations = { observations[j].id, trans_x, trans_y };
+    transformed_obs.push_back(observations);
+    }
+
+    // Map landmarks within the sensor range
+    for (int j=0; j < map_landmarks.landmark_list.size(); j++) {
+
+      int map_id = map_landmarks.landmark_list[j].id_i;
+      double map_x = map_landmarks.landmark_list[j].x_f;
+      double map_y = map_landmarks.landmark_list[j].y_f;
+
+      double dx = map_x - particles[i].x;
+      double dy = map_y - particles[i].y;
+      double error = sqrt(dx * dx + dy * dy);
+
+      if (error < sensor_range) {
+        LandmarksObs prediction = { map_id, map_x, map_y };
+        predictions.push_back(prediction);
+      }
+    }
+
+    // Landmarks near to landmark observations
+    dataAssociation(predictions, transformed_obs);
+
+    // Comparison between observation vehicle and particles to update particle weight
+
+    double w = 1.0;
+
+    for (int j=0; j < transformed_obs.size(); j++) {
+
+      int obs_id = transformed_obs[j].id;
+
+      double ux = predictions[obs_id].x;  // ux
+      double uy = predictions[obs_id].y;  // uy
+
+      double diff_x = transformed_obs[j].x - ux;
+      double diff_y = transformed_obs[j].y - uy;
+
+      const double exponent = (diff_x * diff_x * n_x) + (diff_y * diff_y * n_y)
+      double r = gauss_norm * exp(-exponent)
+      w *= r;
+    }
+    particles[i].weight = w;
+    weights[i] = w;
+  }
 }
 
 void ParticleFilter::resample() {
