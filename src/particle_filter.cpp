@@ -166,8 +166,8 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
     const double trans_x = particles[i].x + observations[j].x * cos(particles[i].theta) - observations[j].y * sin(particles[i].theta);
     const double trans_y = particles[i].y + observations[j].y * cos(particles[i].theta) + observations[j].x * sin(particles[i].theta);
 
-    LandmarkObs observations = { observations[j].id, trans_x, trans_y };
-    transformed_obs.push_back(observations);
+    LandmarkObs observation = { observations[j].id, trans_x, trans_y };
+    transformed_obs.push_back(observation);
     }
 
     // Map landmarks within the sensor range
@@ -182,7 +182,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
       double error = sqrt(dx * dx + dy * dy);
 
       if (error < sensor_range) {
-        LandmarksObs prediction = { map_id, map_x, map_y };
+        LandmarkObs prediction = { map_id, map_x, map_y };
         predictions.push_back(prediction);
       }
     }
@@ -191,7 +191,6 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
     dataAssociation(predictions, transformed_obs);
 
     // Comparison between observation vehicle and particles to update particle weight
-
     double w = 1.0;
 
     for (int j=0; j < transformed_obs.size(); j++) {
@@ -204,8 +203,8 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
       double diff_x = transformed_obs[j].x - ux;
       double diff_y = transformed_obs[j].y - uy;
 
-      const double exponent = (diff_x * diff_x * n_x) + (diff_y * diff_y * n_y)
-      double r = gauss_norm * exp(-exponent)
+      const double exponent = (diff_x * diff_x * n_x) + (diff_y * diff_y * n_y);
+      double r = gauss_norm * exp(-exponent);
       w *= r;
     }
     particles[i].weight = w;
@@ -217,6 +216,22 @@ void ParticleFilter::resample() {
 	// TODO: Resample particles with replacement with probability proportional to their weight.
 	// NOTE: You may find std::discrete_distribution helpful here.
 	//   http://en.cppreference.com/w/cpp/numeric/random/discrete_distribution
+
+    // New particles vector
+    vector<Particle> new_particles(num_particles);
+
+    // Discrete Distribution to return particles by weight
+    default_random_engine gen;
+
+    for (int i=0; i < num_particles; i++){
+
+        discrete_distribution<int> index(weights.begin(), weights.end());
+        new_particles[i] = particles[index(gen)];
+
+    }
+
+    // Replace old particles with the resampled particles
+    particles = new_particles;
 
 }
 
