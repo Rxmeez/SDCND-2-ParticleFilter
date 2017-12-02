@@ -27,11 +27,11 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
 	// NOTE: Consult particle_filter.h for more information about this method (and others in this file).
 
     // Set a number of particles to be initialized
-    num_particles = 200;
+    num_particles = 10;
 
     // Resize particle and weights vector to be the same as num_particles
     particles.resize(num_particles);  // particles
-    weights.resize(num_particles);  // weights
+    //weights.resize(num_particles);  // weights
 
     // Gaussian distribution for x, y, and theta (std[x, y, theta])
     normal_distribution<double> dist_x(x, std[0]);
@@ -50,6 +50,7 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
       particles[i].theta = dist_theta(gen);
       particles[i].weight = 1.0;
 
+      weights.push_back(particles[i].weight);
     }
 
     // Initialized, so show as true
@@ -79,6 +80,7 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
     for (int i=0; i < num_particles; i++) {
 
         // yaw_rate != 0, so it doesnt create error for division by zero
+        //cout << abs(yaw_rate) << endl;
         if (abs(yaw_rate) != 0) {
 
             // Measurements for each particle
@@ -91,6 +93,7 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
             // Where yaw_rate == 0;
             particles[i].x += (velocity * delta_t * cos(particles[i].theta));
             particles[i].y += (velocity * delta_t * sin(particles[i].theta));
+            particles[i].theta = particles[i].theta;
 
         }
 
@@ -111,14 +114,14 @@ void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::ve
 
   for (int i=0; i < observations.size(); i++){
 
-    int current_id;
-    double smallest_error = 9999999.0;  // Large Number so future errors will be smaller
+    int current_id = -1;
+    double smallest_error = INFINITY;  // Large Number so future errors will be smaller
 
     for (int j=0; j < predicted.size(); j++){
       // difference between predicted and each observations
       double dx = predicted[j].x - observations[i].x;
       double dy = predicted[j].y - observations[i].y;
-      double error = (dx * dx) + (dy * dy);
+      double error = dx*dx + dy*dy;
 
       if (error < smallest_error){
         // nearby id
@@ -126,10 +129,9 @@ void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::ve
         smallest_error = error;
       }
     }
-
+    //cout << current_id << endl;
     observations[i].id = current_id;
   }
-
 }
 
 void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
@@ -218,7 +220,8 @@ void ParticleFilter::resample() {
 	//   http://en.cppreference.com/w/cpp/numeric/random/discrete_distribution
 
     // New particles vector
-    vector<Particle> new_particles(num_particles);
+    vector<Particle> new_particles;
+    new_particles.resize(num_particles);
 
     // Discrete Distribution to return particles by weight
     default_random_engine gen;
@@ -246,6 +249,8 @@ Particle ParticleFilter::SetAssociations(Particle& particle, const std::vector<i
     particle.associations= associations;
     particle.sense_x = sense_x;
     particle.sense_y = sense_y;
+
+    return particle;
 }
 
 string ParticleFilter::getAssociations(Particle best)
