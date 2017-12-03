@@ -27,7 +27,7 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
 	// NOTE: Consult particle_filter.h for more information about this method (and others in this file).
 
     // Set a number of particles to be initialized
-    num_particles = 10;
+    num_particles = 1;
 
     // Resize particle and weights vector to be the same as num_particles
     particles.resize(num_particles);  // particles
@@ -63,6 +63,7 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
 	// NOTE: When adding noise you may find std::normal_distribution and std::default_random_engine useful.
 	//  http://en.cppreference.com/w/cpp/numeric/random/normal_distribution
 	//  http://www.cplusplus.com/reference/random/default_random_engine/
+
 
     // xf = x0 + velocity/yaw_rate[sin(yaw_rate(0) + yaw_rate(dt) - sin(yaw_rate(0)))]
     // yf = y0 + velocity/yaw_rate[cos(yaw_rate(0)) - cos(yaw_rate(0) + yaw_rate(dt))]
@@ -132,6 +133,7 @@ void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::ve
     //cout << current_id << endl;
     observations[i].id = current_id;
   }
+
 }
 
 void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
@@ -147,20 +149,21 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 	//   3.33
 	//   http://planning.cs.uiuc.edu/node99.html
 
+
   // P(x,y) = 1/(2*(pi)*std[x]*std[y]) e^ -((x-ux)^2/(2*std[x]^2) + (y-uy)^2/(2*std[y]^2))
   // where ux and uy are coordinates of the nearest landmarks
 
   const double stdx = std_landmark[0];
   const double stdy = std_landmark[1];
-  const double gauss_norm = 1.0 / (2 * M_PI * stdx *stdy);
-  const double n_x = 1.0 / (2 * stdx * stdx);
-  const double n_y = 1.0 / (2 * stdy * stdy);
+  const double gauss_norm = 1.0 / (2.0 * M_PI * stdx *stdy);
+  const double n_x = 1.0 / (2.0 * stdx * stdx);
+  const double n_y = 1.0 / (2.0 * stdy * stdy);
 
 
   // Transform each observations to map coordinates for each particle
   for (int i=0; i < num_particles; i++) {
 
-    vector<LandmarkObs> predictions;
+    vector<LandmarkObs> pred_landmarks;
     vector<LandmarkObs> transformed_obs;
 
     for (int j=0; j < observations.size(); j++) {
@@ -168,7 +171,10 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
     const double trans_x = particles[i].x + observations[j].x * cos(particles[i].theta) - observations[j].y * sin(particles[i].theta);
     const double trans_y = particles[i].y + observations[j].y * cos(particles[i].theta) + observations[j].x * sin(particles[i].theta);
 
-    LandmarkObs observation = { observations[j].id, trans_x, trans_y };
+    cout << "ID: " << observations[j].id << endl;
+    cout << "x: " << trans_x << endl;
+    cout << "y: " << trans_y << endl;
+    LandmarkObs observation = {observations[j].id, trans_x, trans_y};
     transformed_obs.push_back(observation);
     }
 
@@ -181,16 +187,18 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 
       double dx = map_x - particles[i].x;
       double dy = map_y - particles[i].y;
-      double error = sqrt(dx * dx + dy * dy);
+      double error = sqrt((dx*dx) + (dy*dy));
+
 
       if (error < sensor_range) {
-        LandmarkObs prediction = { map_id, map_x, map_y };
-        predictions.push_back(prediction);
+        LandmarkObs prediction = {map_id, map_x, map_y};
+        pred_landmarks.push_back(prediction);
       }
     }
 
     // Landmarks near to landmark observations
-    dataAssociation(predictions, transformed_obs);
+    //cout << pred_landmarks.size() << " " << transformed_obs.size() << endl;
+    dataAssociation(pred_landmarks, transformed_obs);
 
     // Comparison between observation vehicle and particles to update particle weight
     double w = 1.0;
@@ -198,20 +206,23 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
     for (int j=0; j < transformed_obs.size(); j++) {
 
       int obs_id = transformed_obs[j].id;
+      cout << "Obs_id: " << obs_id << endl;
+      cout << "Pred landmark: " << pred_landmarks[obs_id].x << endl;
 
-      double ux = predictions[obs_id].x;  // ux
-      double uy = predictions[obs_id].y;  // uy
+      double ux = 0; //pred_landmarks[obs_id].x;  // ux
+      double uy = 0; //pred_landmarks[obs_id].y;  // uy
 
       double diff_x = transformed_obs[j].x - ux;
       double diff_y = transformed_obs[j].y - uy;
 
-      const double exponent = (diff_x * diff_x * n_x) + (diff_y * diff_y * n_y);
+      double exponent = (diff_x * diff_x * n_x) + (diff_y * diff_y * n_y);
       double r = gauss_norm * exp(-exponent);
       w *= r;
     }
     particles[i].weight = w;
     weights[i] = w;
   }
+
 }
 
 void ParticleFilter::resample() {
@@ -235,7 +246,6 @@ void ParticleFilter::resample() {
 
     // Replace old particles with the resampled particles
     particles = new_particles;
-
 }
 
 Particle ParticleFilter::SetAssociations(Particle& particle, const std::vector<int>& associations,
