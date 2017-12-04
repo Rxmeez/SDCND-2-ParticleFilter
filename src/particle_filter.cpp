@@ -50,7 +50,7 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
       particles[i].theta = dist_theta(gen);
       particles[i].weight = 1.0;
 
-      weights[i] = 1.0;
+      weights.push_back(particles[i].weight);
     }
 
     // Initialized, so show as true
@@ -113,9 +113,10 @@ void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::ve
 	// NOTE: this method will NOT be called by the grading code. But you will probably find it useful to
 	//   implement this method and use it as a helper during the updateWeights phase.
 
+
   for (int i=0; i < observations.size(); i++){
 
-    int current_id = -1;
+    int current_id = 0;
     double smallest_error = INFINITY;  // Large Number so future errors will be smaller
 
     for (int j=0; j < predicted.size(); j++){
@@ -202,9 +203,12 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
       int obs_id = transformed_obs[j].id;
       double obs_x = transformed_obs[j].x;
       double obs_y = transformed_obs[j].y;
+      cout << obs_id << endl;
 
       double ux = pred_landmarks[obs_id].x;  // ux
       double uy = pred_landmarks[obs_id].y;  // uy
+
+      cout << "ux :" << ux << endl;
 
       double diff_x = obs_x - ux;
       double diff_y = obs_y - uy;
@@ -215,6 +219,11 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
     }
     particles[i].weight = w;
     weights[i] = w;
+  }
+  double total_weight = 1e-6;
+  for (int l = 0; l < num_particles; ++l) {
+    particles[l].weight = particles[l].weight / total_weight;
+    weights[l] = particles[l].weight;
   }
 }
 
@@ -239,6 +248,7 @@ void ParticleFilter::resample() {
 
     // Replace old particles with the resampled particles
     particles = new_particles;
+
 }
 
 Particle ParticleFilter::SetAssociations(Particle& particle, const std::vector<int>& associations,
