@@ -27,7 +27,7 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
 	// NOTE: Consult particle_filter.h for more information about this method (and others in this file).
 
     // Set a number of particles to be initialized
-    num_particles = 1;
+    num_particles = 100;
 
     // Resize particle and weights vector to be the same as num_particles
     particles.resize(num_particles);  // particles
@@ -50,7 +50,7 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
       particles[i].theta = dist_theta(gen);
       particles[i].weight = 1.0;
 
-      weights.push_back(particles[i].weight);
+      weights[i] = 1.0;
     }
 
     // Initialized, so show as true
@@ -149,7 +149,6 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 	//   3.33
 	//   http://planning.cs.uiuc.edu/node99.html
 
-
   // P(x,y) = 1/(2*(pi)*std[x]*std[y]) e^ -((x-ux)^2/(2*std[x]^2) + (y-uy)^2/(2*std[y]^2))
   // where ux and uy are coordinates of the nearest landmarks
 
@@ -163,21 +162,17 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
   // Transform each observations to map coordinates for each particle
   for (int i=0; i < num_particles; i++) {
 
-    vector<LandmarkObs> pred_landmarks;
     vector<LandmarkObs> transformed_obs;
 
     for (int j=0; j < observations.size(); j++) {
 
-    const double trans_x = particles[i].x + observations[j].x * cos(particles[i].theta) - observations[j].y * sin(particles[i].theta);
-    const double trans_y = particles[i].y + observations[j].y * cos(particles[i].theta) + observations[j].x * sin(particles[i].theta);
+    const double trans_x = particles[i].x + (observations[j].x * cos(particles[i].theta)) - (observations[j].y * sin(particles[i].theta));
+    const double trans_y = particles[i].y + (observations[j].y * cos(particles[i].theta)) + (observations[j].x * sin(particles[i].theta));
 
-    cout << "ID: " << observations[j].id << endl;
-    cout << "x: " << trans_x << endl;
-    cout << "y: " << trans_y << endl;
-    LandmarkObs observation = {observations[j].id, trans_x, trans_y};
-    transformed_obs.push_back(observation);
+    transformed_obs.push_back(LandmarkObs{observations[j].id, trans_x, trans_y});
     }
 
+    vector<LandmarkObs> pred_landmarks;
     // Map landmarks within the sensor range
     for (int j=0; j < map_landmarks.landmark_list.size(); j++) {
 
@@ -189,10 +184,9 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
       double dy = map_y - particles[i].y;
       double error = sqrt((dx*dx) + (dy*dy));
 
-
-      if (error < sensor_range) {
-        LandmarkObs prediction = {map_id, map_x, map_y};
-        pred_landmarks.push_back(prediction);
+      // Only consider the landmarks within the sensor range
+      if (error <= sensor_range) {
+        pred_landmarks.push_back(LandmarkObs{map_id, map_x, map_y});
       }
     }
 
@@ -206,23 +200,22 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
     for (int j=0; j < transformed_obs.size(); j++) {
 
       int obs_id = transformed_obs[j].id;
-      cout << "Obs_id: " << obs_id << endl;
-      cout << "Pred landmark: " << pred_landmarks[obs_id].x << endl;
+      double obs_x = transformed_obs[j].x;
+      double obs_y = transformed_obs[j].y;
 
-      double ux = 0; //pred_landmarks[obs_id].x;  // ux
-      double uy = 0; //pred_landmarks[obs_id].y;  // uy
+      double ux = pred_landmarks[obs_id].x;  // ux
+      double uy = pred_landmarks[obs_id].y;  // uy
 
-      double diff_x = transformed_obs[j].x - ux;
-      double diff_y = transformed_obs[j].y - uy;
+      double diff_x = obs_x - ux;
+      double diff_y = obs_y - uy;
 
       double exponent = (diff_x * diff_x * n_x) + (diff_y * diff_y * n_y);
-      double r = gauss_norm * exp(-exponent);
-      w *= r;
+      double result = gauss_norm * exp(-exponent);
+      w *= result;
     }
     particles[i].weight = w;
     weights[i] = w;
   }
-
 }
 
 void ParticleFilter::resample() {
