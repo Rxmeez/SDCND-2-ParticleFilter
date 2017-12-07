@@ -173,6 +173,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
     transformed_obs.push_back(LandmarkObs{observations[j].id, trans_x, trans_y});
     }
 
+    cout <<  "map_landmarks size: " << map_landmarks.landmark_list.size() << endl;
     vector<LandmarkObs> pred_landmarks;
     // Map landmarks within the sensor range
     for (int j=0; j < map_landmarks.landmark_list.size(); j++) {
@@ -183,10 +184,10 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 
       double dx = map_x - particles[i].x;
       double dy = map_y - particles[i].y;
-      double error = sqrt((dx*dx) + (dy*dy));
-
+      double distance = sqrt((dx*dx) + (dy*dy));
+      cout << "distance: " << distance << " sensor: " << sensor_range << endl;
       // Only consider the landmarks within the sensor range
-      if (error <= sensor_range) {
+      if (distance <= sensor_range) {
         pred_landmarks.push_back(LandmarkObs{map_id, map_x, map_y});
       }
     }
@@ -203,12 +204,9 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
       int obs_id = transformed_obs[j].id;
       double obs_x = transformed_obs[j].x;
       double obs_y = transformed_obs[j].y;
-      cout << obs_id << endl;
 
       double ux = pred_landmarks[obs_id].x;  // ux
       double uy = pred_landmarks[obs_id].y;  // uy
-
-      cout << "ux :" << ux << endl;
 
       double diff_x = obs_x - ux;
       double diff_y = obs_y - uy;
@@ -219,11 +217,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
     }
     particles[i].weight = w;
     weights[i] = w;
-  }
-  double total_weight = 1e-6;
-  for (int l = 0; l < num_particles; ++l) {
-    particles[l].weight = particles[l].weight / total_weight;
-    weights[l] = particles[l].weight;
+
   }
 }
 
@@ -258,6 +252,9 @@ Particle ParticleFilter::SetAssociations(Particle& particle, const std::vector<i
     // associations: The landmark id that goes along with each listed association
     // sense_x: the associations x mapping already converted to world coordinates
     // sense_y: the associations y mapping already converted to world coordinates
+    particle.associations.clear();
+	particle.sense_x.clear();
+	particle.sense_y.clear();
 
     particle.associations= associations;
     particle.sense_x = sense_x;
