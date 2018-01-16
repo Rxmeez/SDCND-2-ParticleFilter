@@ -27,19 +27,19 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
 	// NOTE: Consult particle_filter.h for more information about this method (and others in this file).
 
     // Set a number of particles to be initialized
-    num_particles = 100;
+    num_particles = 1;
 
     // Resize particle and weights vector to be the same as num_particles
     particles.resize(num_particles);  // particles
     //weights.resize(num_particles);  // weights
 
+    // Random generator
+    default_random_engine gen;
+
     // Gaussian distribution for x, y, and theta (std[x, y, theta])
     normal_distribution<double> dist_x(x, std[0]);
     normal_distribution<double> dist_y(y, std[1]);
     normal_distribution<double> dist_theta(theta, std[2]);
-
-    // Random generator
-    default_random_engine gen;
 
     // Initializes num_particles randomly from the Gaussian distribution
     for (int i=0; i < num_particles; i++) {
@@ -71,6 +71,7 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
 
     // Random generator
     default_random_engine gen;
+
 
     // Gaussian distribution for x, y, and theta (std_pos[x, y, theta])
     normal_distribution<double> dist_x(0, std_pos[0]);
@@ -117,24 +118,23 @@ void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::ve
   for (int i=0; i < observations.size(); i++){
 
     int current_id = 0;
-    double smallest_error = INFINITY;  // Large Number so future errors will be smaller
+    double smallest_error = 99999999.99;  // Large Number
 
     for (int j=0; j < predicted.size(); j++){
       // difference between predicted and each observations
       double dx = predicted[j].x - observations[i].x;
       double dy = predicted[j].y - observations[i].y;
-      double error = dx*dx + dy*dy;
+      double error = sqrt(dx*dx + dy*dy);
 
       if (error < smallest_error){
         // nearby id
-        current_id = j;
+        current_id = predicted[j].id;
         smallest_error = error;
       }
     }
     //cout << current_id << endl;
     observations[i].id = current_id;
   }
-
 }
 
 void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
@@ -173,7 +173,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
     transformed_obs.push_back(LandmarkObs{observations[j].id, trans_x, trans_y});
     }
 
-    cout <<  "map_landmarks size: " << map_landmarks.landmark_list.size() << endl;
+    //cout <<  "map_landmarks size: " << map_landmarks.landmark_list.size() << endl;
     vector<LandmarkObs> pred_landmarks;
     // Map landmarks within the sensor range
     for (int j=0; j < map_landmarks.landmark_list.size(); j++) {
@@ -185,11 +185,12 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
       double dx = map_x - particles[i].x;
       double dy = map_y - particles[i].y;
       double distance = sqrt((dx*dx) + (dy*dy));
-      cout << "distance: " << distance << " sensor: " << sensor_range << endl;
+
+      //cout << "distance: " << distance << " sensor: " << sensor_range << endl;
       // Only consider the landmarks within the sensor range
       if (distance <= sensor_range) {
         pred_landmarks.push_back(LandmarkObs{map_id, map_x, map_y});
-      }
+        }
     }
 
     // Landmarks near to landmark observations
@@ -204,7 +205,13 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
       int obs_id = transformed_obs[j].id;
       double obs_x = transformed_obs[j].x;
       double obs_y = transformed_obs[j].y;
+/*
+      cout << "obs id = " << obs_id << endl;
+      cout << "obs x = " << obs_x << endl;
+      cout << "obs y = " << obs_y << endl;
 
+      cout << "pred landmarks size = " << pred_landmarks.size() << endl;
+*/
       double ux = pred_landmarks[obs_id].x;  // ux
       double uy = pred_landmarks[obs_id].y;  // uy
 
@@ -219,6 +226,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
     weights[i] = w;
 
   }
+
 }
 
 void ParticleFilter::resample() {
@@ -228,18 +236,17 @@ void ParticleFilter::resample() {
 
     // New particles vector
     vector<Particle> new_particles;
-    new_particles.resize(num_particles);
 
     // Discrete Distribution to return particles by weight
     default_random_engine gen;
+    discrete_distribution<int> index(weights.begin(), weights.end());
 
     for (int i=0; i < num_particles; i++){
-
-        discrete_distribution<int> index(weights.begin(), weights.end());
-        new_particles[i] = particles[index(gen)];
-
+        new_particles.push_back(particles[index(gen)]);
     }
 
+    particles.clear();
+    weights.clear();
     // Replace old particles with the resampled particles
     particles = new_particles;
 
