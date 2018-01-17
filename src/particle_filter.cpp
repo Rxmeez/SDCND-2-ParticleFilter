@@ -116,8 +116,8 @@ void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::ve
 
     for (int j=0; j < predicted.size(); j++){
       // difference between predicted and each observations
-      double dx = predicted[j].x - observations[i].x;
-      double dy = predicted[j].y - observations[i].y;
+      //double dx = predicted[j].x - observations[i].x;
+      //double dy = predicted[j].y - observations[i].y;
       double error = dist(observations[i].x, observations[i].y, predicted[j].x, predicted[j].y);
       // double error = sqrt(dx*dx + dy*dy);
 
@@ -179,8 +179,8 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
       double map_x = map_landmarks.landmark_list[j].x_f;
       double map_y = map_landmarks.landmark_list[j].y_f;
 
-      double dx = map_x - particles[i].x;
-      double dy = map_y - particles[i].y;
+      //double dx = map_x - particles[i].x;
+      //double dy = map_y - particles[i].y;
       double distance = dist(map_x, map_y, particles[i].x, particles[i].y);
       //double distance = sqrt((dx*dx) + (dy*dy));
 
@@ -214,6 +214,8 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 
     for (int j=0; j < transformed_obs.size(); j++){
         // compute Multivariate_Gaussian probability
+        cout << "PRED LANDMARKS SIZE = " << pred_landmarks.size() << endl;
+
         int o_id = transformed_obs[j].id;
         double o_x = transformed_obs[j].x;
         double o_y = transformed_obs[j].y;
@@ -222,7 +224,6 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
         double e = (e1/std_x_2 + e2/std_y_2);
         double ee = exp(-e);
         double w = ee/std_xy_2pi;
-
         //product of all weights
         weight *= w;
 
@@ -230,6 +231,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
         associations.push_back(o_id);
         sense_x.push_back(o_x);
         sense_y.push_back(o_y);
+
     }
 
     particles[i].weight = weight;
