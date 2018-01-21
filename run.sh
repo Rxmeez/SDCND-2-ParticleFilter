@@ -6,4 +6,4 @@
 
 # Run particle filter
 cd ./build
-gdb ./particle_filter
+./particle_filter
